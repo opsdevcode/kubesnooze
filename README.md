@@ -1,5 +1,7 @@
 # kubesnooze
 
+![kubesnooze logo](images/kubesnooze_logo.png)
+
 kubesnooze is a Kubernetes operator that schedules "sleep" and "wake" actions
 for workloads in a namespace. It uses a single `KubeSnooze` custom resource to
 define schedules and label selectors, then creates CronJobs that run a small
