@@ -59,6 +59,15 @@ spec:
     suspendCronJobs: false
 ```
 
+## Splash page
+
+You can deploy the optional splash page server to show a "waking up" UI that
+triggers a wake action on each request.
+
+```sh
+kubectl apply -f config/samples/kubesnooze_splash.yaml
+```
+
 ## Contributing
 
 This repo requires PRs for all changes except the repository owner. See
