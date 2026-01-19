@@ -16,6 +16,7 @@ This is an MIT-licensed, open-source project and all APIs are under the
 - Two schedules: `sleepCron` and optional `wakeCron`.
 - Runner-based execution via CronJobs with per-namespace RBAC.
 - Annotations to restore original replica or HPA min values.
+- Optional splash server that wakes workloads on request.
 
 ## Quick start
 
@@ -62,7 +63,8 @@ spec:
 ## Splash page
 
 You can deploy the optional splash page server to show a "waking up" UI that
-triggers a wake action on each request.
+triggers a wake action on each request. Update the image name in the sample
+manifest to point at your built `kubesnooze-splash` image.
 
 ```sh
 kubectl apply -f config/samples/kubesnooze_splash.yaml
@@ -70,5 +72,6 @@ kubectl apply -f config/samples/kubesnooze_splash.yaml
 
 ## Contributing
 
-This repo requires PRs for all changes except the repository owner. See
-`CONTRIBUTING.md` for branch protection and CI setup.
+This repo requires PRs for all changes except the repository owner. CI enforces
+Conventional Commits and requires a semver bump in `VERSION` based on commit
+messages. See `CONTRIBUTING.md` for branch protection and CI setup.
