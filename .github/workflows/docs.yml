@@ -1,0 +1,39 @@
+name: Docs
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install MkDocs
+        run: pip install mkdocs
+
+      - name: Decide whether to build/deploy
+        id: docs
+        run: bash .github/scripts/docs-should-deploy.sh
+
+      - name: Build docs
+        if: steps.docs.outputs.deploy == 'true'
+        run: mkdocs build --strict
+
+      - name: Deploy to gh-pages
+        if: github.event_name == 'push' && steps.docs.outputs.deploy == 'true'
+        run: mkdocs gh-deploy --force --clean

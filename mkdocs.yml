@@ -1,0 +1,6 @@
+site_name: KubeSnooze
+repo_url: https://github.com/opsdevcode/kubesnooze
+repo_name: opsdevcode/kubesnooze
+docs_dir: docs
+theme:
+  name: mkdocs
