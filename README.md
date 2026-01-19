@@ -1,0 +1,63 @@
+# kubesnooze
+
+kubesnooze is a Kubernetes operator that schedules "sleep" and "wake" actions
+for workloads in a namespace. It uses a single `KubeSnooze` custom resource to
+define schedules and label selectors, then creates CronJobs that run a small
+runner to scale Deployments, StatefulSets, HPAs, and suspend or resume CronJobs.
+
+This is an MIT-licensed, open-source project and all APIs are under the
+`kubesnooze.io` group with the `KubeSnooze` kind.
+
+## Core ideas
+
+- Namespace-scoped CRD with label selector targeting.
+- Two schedules: `sleepCron` and optional `wakeCron`.
+- Runner-based execution via CronJobs with per-namespace RBAC.
+- Annotations to restore original replica or HPA min values.
+
+## Quick start
+
+1. Apply the CRD:
+
+```sh
+kubectl apply -f config/crd/bases/kubesnooze.io_kubesnoozes.yaml
+```
+
+1. Deploy the controller (example manifest under `config/manager/manager.yaml`).
+
+1. Apply a sample `KubeSnooze`:
+
+```sh
+kubectl apply -f config/samples/kubesnooze_v1alpha1_kubesnooze.yaml
+```
+
+## Sample KubeSnooze
+
+```yaml
+apiVersion: kubesnooze.io/v1alpha1
+kind: KubeSnooze
+metadata:
+  name: app-snooze
+  namespace: app-1
+spec:
+  selector:
+    matchLabels:
+      kubesnooze.io/snooze: app-1
+  sleepCron: "0 20 * * 1-5"
+  wakeCron: "0 7 * * 1-5"
+  timezone: "UTC"
+  runnerImage: "ghcr.io/kubesnooze/kubesnooze-runner:latest"
+  sleep:
+    replicas: 0
+    hpaMinReplicas: 1
+    suspendCronJobs: true
+  wake:
+    replicas: 2
+    hpaMinReplicas: 2
+    suspendCronJobs: false
+```
+
+## Contributing
+
+This repo requires PRs for all changes except the repository owner. See
+`CONTRIBUTING.md` for branch protection and CI setup.

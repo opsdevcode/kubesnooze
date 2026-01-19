@@ -1,0 +1,21 @@
+apiVersion: kubesnooze.io/v1alpha1
+kind: KubeSnooze
+metadata:
+  name: app-snooze
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubesnooze.io/snooze: default
+  sleepCron: "0 20 * * 1-5"
+  wakeCron: "0 7 * * 1-5"
+  timezone: "UTC"
+  runnerImage: "ghcr.io/kubesnooze/kubesnooze-runner:latest"
+  sleep:
+    replicas: 0
+    hpaMinReplicas: 1
+    suspendCronJobs: true
+  wake:
+    replicas: 2
+    hpaMinReplicas: 2
+    suspendCronJobs: false

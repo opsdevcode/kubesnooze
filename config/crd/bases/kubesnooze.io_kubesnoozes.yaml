@@ -1,0 +1,93 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: kubesnoozes.kubesnooze.io
+spec:
+  group: kubesnooze.io
+  names:
+    kind: KubeSnooze
+    listKind: KubeSnoozeList
+    plural: kubesnoozes
+    singular: kubesnooze
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          description: KubeSnooze schedules sleep/wake actions for workloads.
+          properties:
+            spec:
+              type: object
+              required:
+                - selector
+                - sleepCron
+              properties:
+                selector:
+                  type: object
+                  description: Label selector for targeted resources.
+                sleepCron:
+                  type: string
+                wakeCron:
+                  type: string
+                timezone:
+                  type: string
+                runnerImage:
+                  type: string
+                sleep:
+                  type: object
+                  properties:
+                    replicas:
+                      type: integer
+                      format: int32
+                    hpaMinReplicas:
+                      type: integer
+                      format: int32
+                    suspendCronJobs:
+                      type: boolean
+                wake:
+                  type: object
+                  properties:
+                    replicas:
+                      type: integer
+                      format: int32
+                    hpaMinReplicas:
+                      type: integer
+                      format: int32
+                    suspendCronJobs:
+                      type: boolean
+            status:
+              type: object
+              properties:
+                observedGeneration:
+                  type: integer
+                  format: int64
+                lastSleepTime:
+                  type: string
+                  format: date-time
+                lastWakeTime:
+                  type: string
+                  format: date-time
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - type
+                      - status
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+      subresources:
+        status: {}
