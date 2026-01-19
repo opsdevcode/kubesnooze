@@ -10,6 +10,8 @@ runner to scale Deployments, StatefulSets, HPAs, and suspend or resume CronJobs.
 This is an MIT-licensed, open-source project and all APIs are under the
 `kubesnooze.io` group with the `KubeSnooze` kind.
 
+Thanks to Angie for helping with naming and logo.
+
 ## Core ideas
 
 - Namespace-scoped CRD with label selector targeting.
