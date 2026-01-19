@@ -9,6 +9,7 @@ To enforce this in GitHub:
 
 1. Create or update a branch protection rule (or ruleset) for `main`:
    - Require a pull request before merging.
+   - Require CODEOWNERS review.
    - Require status checks to pass before merging.
    - Require branches to be up to date before merging (recommended).
    - Allow bypass for the repository owner (and only those you trust).
