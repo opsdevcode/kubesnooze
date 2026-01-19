@@ -66,5 +66,6 @@ type KubeSnoozeList struct {
 }
 
 func init() {
+	// Register custom resources with the scheme.
 	SchemeBuilder.Register(&KubeSnooze{}, &KubeSnoozeList{})
 }

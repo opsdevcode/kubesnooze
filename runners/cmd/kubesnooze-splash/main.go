@@ -62,6 +62,7 @@ func main() {
 	}
 
 	if config.namespace == "kube-system" {
+		// Avoid mutating core system workloads.
 		fmt.Println("kube-system is ignored by design")
 		return
 	}
@@ -107,6 +108,7 @@ func (s *wakeService) handleSplash(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
+	// Optional per-request override for service-based wake.
 	serviceName := strings.TrimSpace(r.URL.Query().Get("service"))
 	err := s.wake(ctx, serviceName)
 	data := map[string]string{
@@ -127,6 +129,7 @@ func (s *wakeService) handleSplash(w http.ResponseWriter, r *http.Request) {
 
 func (s *wakeService) wake(ctx context.Context, serviceOverride string) error {
 	s.mu.Lock()
+	// Throttle wake calls to avoid hammering the API on refresh loops.
 	if time.Since(s.lastWakeAt) < 10*time.Second {
 		s.mu.Unlock()
 		return nil
@@ -169,6 +172,7 @@ func loadConfig() (*splashConfig, error) {
 
 	serviceName := strings.TrimSpace(os.Getenv(envServiceName))
 	serviceMode := strings.ToLower(strings.TrimSpace(os.Getenv(envServiceMode)))
+	// Default the mode based on which inputs were provided.
 	if serviceMode == "" {
 		switch {
 		case serviceName != "":
@@ -338,6 +342,7 @@ func wakeHPAMinReplicas(ctx context.Context, clientset *kubernetes.Clientset, cf
 
 func resolveSelectors(ctx context.Context, clientset *kubernetes.Clientset, cfg *splashConfig, overrideService string) ([]labels.Selector, error) {
 	if overrideService != "" {
+		// Overrides the configured mode if the request specifies a service.
 		selector, err := selectorFromService(ctx, clientset, cfg.namespace, overrideService)
 		if err != nil {
 			return nil, err
@@ -355,6 +360,7 @@ func resolveSelectors(ctx context.Context, clientset *kubernetes.Clientset, cfg 
 		}
 		return []labels.Selector{selector}, nil
 	case "all":
+		// Wake all workload selectors referenced by Services in the namespace.
 		services, err := clientset.CoreV1().Services(cfg.namespace).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return nil, err
@@ -423,6 +429,7 @@ var splashTemplate = template.Must(template.New("splash").Parse(`<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ .Title }}</title>
   <style>
+    /* Dark theme baseline with high contrast text. */
     body {
       margin: 0;
       padding: 0;
@@ -430,6 +437,7 @@ var splashTemplate = template.Must(template.New("splash").Parse(`<!DOCTYPE html>
       background: #0b1220;
       color: #f8fafc;
     }
+    /* Center the card both vertically and horizontally. */
     .wrap {
       min-height: 100vh;
       display: flex;
@@ -437,6 +445,7 @@ var splashTemplate = template.Must(template.New("splash").Parse(`<!DOCTYPE html>
       justify-content: center;
       padding: 2rem;
     }
+    /* Card container with subtle depth. */
     .card {
       max-width: 560px;
       width: 100%;
@@ -445,17 +454,20 @@ var splashTemplate = template.Must(template.New("splash").Parse(`<!DOCTYPE html>
       padding: 32px;
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
     }
+    /* Primary message styling. */
     h1 {
       margin: 0 0 12px 0;
       font-size: 28px;
       font-weight: 700;
     }
+    /* Supporting copy with softer contrast. */
     p {
       margin: 0;
       font-size: 16px;
       line-height: 1.6;
       color: #cbd5f5;
     }
+    /* Subtle hint text. */
     .hint {
       margin-top: 20px;
       font-size: 13px;

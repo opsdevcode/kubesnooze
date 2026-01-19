@@ -51,6 +51,7 @@ func (r *KubeSnoozeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	if snooze.Namespace == "kube-system" {
+		// Avoid touching system workloads by design.
 		logger.Info("kube-system is ignored by design", "name", snooze.Name)
 		return ctrl.Result{}, nil
 	}
@@ -67,6 +68,7 @@ func (r *KubeSnoozeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
+	// Ensure per-namespace RBAC so the runner can modify workloads.
 	if err := r.ensureRBAC(ctx, &snooze); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -95,6 +97,7 @@ func (r *KubeSnoozeReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
+// ensureRBAC wires a ServiceAccount, Role, and RoleBinding for the runner.
 func (r *KubeSnoozeReconciler) ensureRBAC(ctx context.Context, snooze *kubesnoozev1alpha1.KubeSnooze) error {
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -164,6 +167,7 @@ func (r *KubeSnoozeReconciler) ensureRBAC(ctx context.Context, snooze *kubesnooz
 	return nil
 }
 
+// ensureCronJob creates or updates the CronJob that triggers the runner.
 func (r *KubeSnoozeReconciler) ensureCronJob(ctx context.Context, snooze *kubesnoozev1alpha1.KubeSnooze, action string, schedule string, selector labels.Selector) error {
 	cronJob := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
@@ -195,6 +199,7 @@ func (r *KubeSnoozeReconciler) ensureCronJob(ctx context.Context, snooze *kubesn
 			image = defaultRunnerImage
 		}
 
+		// Pass the resolved action and settings to the runner container.
 		env := []corev1.EnvVar{
 			{Name: "KUBESNOOZE_ACTION", Value: action},
 			{Name: "KUBESNOOZE_NAMESPACE", Value: snooze.Namespace},
@@ -237,6 +242,7 @@ func mergeLabels(existing map[string]string, add map[string]string) map[string]s
 	if existing == nil {
 		existing = map[string]string{}
 	}
+	// Merge without clobbering unrelated labels.
 	for key, value := range add {
 		existing[key] = value
 	}

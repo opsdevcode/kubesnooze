@@ -22,6 +22,7 @@ var (
 )
 
 func init() {
+	// Register core and custom resources with the manager scheme.
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(kubesnoozev1alpha1.AddToScheme(scheme))
 }
@@ -40,6 +41,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// Manager owns shared caches and controller lifecycle.
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
@@ -60,6 +62,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Health endpoints are used by Kubernetes liveness/readiness probes.
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)

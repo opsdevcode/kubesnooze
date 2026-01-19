@@ -49,6 +49,7 @@ func main() {
 	}
 
 	if config.namespace == "kube-system" {
+		// Avoid mutating core system workloads.
 		fmt.Println("kube-system is ignored by design")
 		return
 	}
@@ -63,6 +64,7 @@ func main() {
 		fail(err)
 	}
 
+	// Apply the action to all supported workload types.
 	if err := processDeployments(ctx, clientset, config); err != nil {
 		fail(err)
 	}
@@ -200,6 +202,7 @@ func updateDeployment(ctx context.Context, clientset *kubernetes.Clientset, cfg 
 	}
 
 	if cfg.action == "sleep" {
+		// Persist the original replicas so wake can restore them.
 		if _, ok := deployment.Annotations[annotationOriginalReplicas]; !ok {
 			deployment.Annotations[annotationOriginalReplicas] = fmt.Sprintf("%d", *replicas)
 		}
@@ -236,6 +239,7 @@ func updateStatefulSet(ctx context.Context, clientset *kubernetes.Clientset, cfg
 	}
 
 	if cfg.action == "sleep" {
+		// Persist the original replicas so wake can restore them.
 		if _, ok := statefulset.Annotations[annotationOriginalReplicas]; !ok {
 			statefulset.Annotations[annotationOriginalReplicas] = fmt.Sprintf("%d", *replicas)
 		}
@@ -268,6 +272,7 @@ func updateHPAMinReplicas(ctx context.Context, clientset *kubernetes.Clientset, 
 	}
 
 	if cfg.action == "sleep" {
+		// Preserve minReplicas so wake can revert to the prior value.
 		if hpa.Spec.MinReplicas != nil {
 			if _, ok := hpa.Annotations[annotationOriginalHPAMin]; !ok {
 				hpa.Annotations[annotationOriginalHPAMin] = fmt.Sprintf("%d", *hpa.Spec.MinReplicas)
