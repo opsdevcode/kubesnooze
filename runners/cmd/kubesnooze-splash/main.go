@@ -7,11 +7,14 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -23,6 +26,8 @@ const (
 	annotationOriginalHPAMin   = "kubesnooze.io/original-hpa-min-replicas"
 	envNamespace               = "KUBESNOOZE_NAMESPACE"
 	envLabelSelector           = "KUBESNOOZE_LABEL_SELECTOR"
+	envServiceMode             = "KUBESNOOZE_SERVICE_MODE"
+	envServiceName             = "KUBESNOOZE_SERVICE_NAME"
 	envWakeReplicas            = "KUBESNOOZE_WAKE_REPLICAS"
 	envWakeHPAMin              = "KUBESNOOZE_WAKE_HPA_MIN_REPLICAS"
 	envPort                    = "KUBESNOOZE_PORT"
@@ -33,6 +38,9 @@ const (
 type splashConfig struct {
 	namespace    string
 	selector     labels.Selector
+	selectorRaw  string
+	serviceMode  string
+	serviceName  string
 	wakeReplicas *int32
 	wakeHPAMin   *int32
 	port         string
@@ -95,11 +103,12 @@ func (s *wakeService) routes() http.Handler {
 	return mux
 }
 
-func (s *wakeService) handleSplash(w http.ResponseWriter, _ *http.Request) {
+func (s *wakeService) handleSplash(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	err := s.wake(ctx)
+	serviceName := strings.TrimSpace(r.URL.Query().Get("service"))
+	err := s.wake(ctx, serviceName)
 	data := map[string]string{
 		"Title":   s.config.title,
 		"Message": s.config.message,
@@ -116,7 +125,7 @@ func (s *wakeService) handleSplash(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (s *wakeService) wake(ctx context.Context) error {
+func (s *wakeService) wake(ctx context.Context, serviceOverride string) error {
 	s.mu.Lock()
 	if time.Since(s.lastWakeAt) < 10*time.Second {
 		s.mu.Unlock()
@@ -125,14 +134,20 @@ func (s *wakeService) wake(ctx context.Context) error {
 	s.lastWakeAt = time.Now()
 	s.mu.Unlock()
 
-	if err := processDeployments(ctx, s.clientset, s.config); err != nil {
+	selectors, err := resolveSelectors(ctx, s.clientset, s.config, serviceOverride)
+	if err != nil {
 		return err
 	}
-	if err := processStatefulSets(ctx, s.clientset, s.config); err != nil {
-		return err
-	}
-	if err := processHPAs(ctx, s.clientset, s.config); err != nil {
-		return err
+	for _, selector := range selectors {
+		if err := processDeployments(ctx, s.clientset, s.config, selector); err != nil {
+			return err
+		}
+		if err := processStatefulSets(ctx, s.clientset, s.config, selector); err != nil {
+			return err
+		}
+		if err := processHPAs(ctx, s.clientset, s.config, selector); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -143,12 +158,35 @@ func loadConfig() (*splashConfig, error) {
 		return nil, fmt.Errorf("namespace is required")
 	}
 	selectorRaw := os.Getenv(envLabelSelector)
-	if selectorRaw == "" {
-		return nil, fmt.Errorf("label selector is required")
+	var selector labels.Selector
+	if selectorRaw != "" {
+		parsed, err := labels.Parse(selectorRaw)
+		if err != nil {
+			return nil, err
+		}
+		selector = parsed
 	}
-	selector, err := labels.Parse(selectorRaw)
-	if err != nil {
-		return nil, err
+
+	serviceName := strings.TrimSpace(os.Getenv(envServiceName))
+	serviceMode := strings.ToLower(strings.TrimSpace(os.Getenv(envServiceMode)))
+	if serviceMode == "" {
+		switch {
+		case serviceName != "":
+			serviceMode = "service"
+		case selector != nil:
+			serviceMode = "selector"
+		default:
+			serviceMode = "all"
+		}
+	}
+	if serviceMode != "selector" && serviceMode != "service" && serviceMode != "all" {
+		return nil, fmt.Errorf("invalid %s: %q (use selector|service|all)", envServiceMode, serviceMode)
+	}
+	if serviceMode == "selector" && selector == nil {
+		return nil, fmt.Errorf("label selector is required when %s=selector", envServiceMode)
+	}
+	if serviceMode == "service" && serviceName == "" {
+		return nil, fmt.Errorf("%s is required when %s=service", envServiceName, envServiceMode)
 	}
 
 	wakeReplicas := parseInt32Pointer(os.Getenv(envWakeReplicas))
@@ -170,6 +208,9 @@ func loadConfig() (*splashConfig, error) {
 	return &splashConfig{
 		namespace:    namespace,
 		selector:     selector,
+		selectorRaw:  selectorRaw,
+		serviceMode:  serviceMode,
+		serviceName:  serviceName,
 		wakeReplicas: wakeReplicas,
 		wakeHPAMin:   wakeHPAMin,
 		port:         port,
@@ -178,9 +219,9 @@ func loadConfig() (*splashConfig, error) {
 	}, nil
 }
 
-func processDeployments(ctx context.Context, clientset *kubernetes.Clientset, cfg *splashConfig) error {
+func processDeployments(ctx context.Context, clientset *kubernetes.Clientset, cfg *splashConfig, selector labels.Selector) error {
 	list, err := clientset.AppsV1().Deployments(cfg.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: cfg.selector.String(),
+		LabelSelector: selector.String(),
 	})
 	if err != nil {
 		return err
@@ -194,9 +235,9 @@ func processDeployments(ctx context.Context, clientset *kubernetes.Clientset, cf
 	return nil
 }
 
-func processStatefulSets(ctx context.Context, clientset *kubernetes.Clientset, cfg *splashConfig) error {
+func processStatefulSets(ctx context.Context, clientset *kubernetes.Clientset, cfg *splashConfig, selector labels.Selector) error {
 	list, err := clientset.AppsV1().StatefulSets(cfg.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: cfg.selector.String(),
+		LabelSelector: selector.String(),
 	})
 	if err != nil {
 		return err
@@ -210,9 +251,9 @@ func processStatefulSets(ctx context.Context, clientset *kubernetes.Clientset, c
 	return nil
 }
 
-func processHPAs(ctx context.Context, clientset *kubernetes.Clientset, cfg *splashConfig) error {
+func processHPAs(ctx context.Context, clientset *kubernetes.Clientset, cfg *splashConfig, selector labels.Selector) error {
 	list, err := clientset.AutoscalingV2().HorizontalPodAutoscalers(cfg.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: cfg.selector.String(),
+		LabelSelector: selector.String(),
 	})
 	if err != nil {
 		return err
@@ -293,6 +334,69 @@ func wakeHPAMinReplicas(ctx context.Context, clientset *kubernetes.Clientset, cf
 		return err
 	}
 	return nil
+}
+
+func resolveSelectors(ctx context.Context, clientset *kubernetes.Clientset, cfg *splashConfig, overrideService string) ([]labels.Selector, error) {
+	if overrideService != "" {
+		selector, err := selectorFromService(ctx, clientset, cfg.namespace, overrideService)
+		if err != nil {
+			return nil, err
+		}
+		return []labels.Selector{selector}, nil
+	}
+
+	switch cfg.serviceMode {
+	case "selector":
+		return []labels.Selector{cfg.selector}, nil
+	case "service":
+		selector, err := selectorFromService(ctx, clientset, cfg.namespace, cfg.serviceName)
+		if err != nil {
+			return nil, err
+		}
+		return []labels.Selector{selector}, nil
+	case "all":
+		services, err := clientset.CoreV1().Services(cfg.namespace).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+		var selectors []labels.Selector
+		for i := range services.Items {
+			service := &services.Items[i]
+			selector := selectorFromServiceObject(service)
+			if selector == nil {
+				continue
+			}
+			selectors = append(selectors, selector)
+		}
+		if len(selectors) == 0 {
+			return nil, fmt.Errorf("no services with selectors found in namespace %s", cfg.namespace)
+		}
+		return selectors, nil
+	default:
+		return nil, fmt.Errorf("unsupported service mode: %s", cfg.serviceMode)
+	}
+}
+
+func selectorFromService(ctx context.Context, clientset *kubernetes.Clientset, namespace, name string) (labels.Selector, error) {
+	service, err := clientset.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("service %s not found in namespace %s", name, namespace)
+		}
+		return nil, err
+	}
+	selector := selectorFromServiceObject(service)
+	if selector == nil {
+		return nil, fmt.Errorf("service %s has no selector", name)
+	}
+	return selector, nil
+}
+
+func selectorFromServiceObject(service *corev1.Service) labels.Selector {
+	if len(service.Spec.Selector) == 0 {
+		return nil
+	}
+	return labels.SelectorFromSet(labels.Set(service.Spec.Selector))
 }
 
 func parseInt32Pointer(value string) *int32 {
