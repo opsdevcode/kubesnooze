@@ -16,9 +16,21 @@ To enforce this in GitHub:
 2. Require these checks on `main`:
    - `CI`
    - `Direct Push Guard`
+   - `Version Check`
 3. Optional: define a repo variable `ALLOWED_DIRECT_PUSH_USERS` with a
    comma-separated list of GitHub usernames that may bypass PRs.
 
 With the rule in place, non-owner direct pushes to `main` will be blocked by
 branch protection, and the `Direct Push Guard` workflow will fail if anyone
 not in the allowlist tries to push directly.
+
+## Versioning on PRs
+
+Each PR must update `VERSION` using conventional commit messages:
+
+- `feat:` → minor bump
+- `fix:` or `perf:` → patch bump
+- `BREAKING CHANGE` or `type!:` → major bump
+
+The `Version Check` workflow enforces conventional commits and validates the
+`VERSION` bump against commit messages.
