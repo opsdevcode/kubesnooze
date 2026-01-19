@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version_path="VERSION"
 base_ref="${GITHUB_BASE_REF:-main}"
 
-if ! git show "origin/${base_ref}:${version_path}" >/dev/null 2>&1; then
-  echo "VERSION file not found on ${base_ref}. Add ${version_path}."
+base_version="$(git describe --tags --abbrev=0 "origin/${base_ref}" 2>/dev/null || true)"
+if [[ -z "${base_version}" ]]; then
+  echo "No git tags found on ${base_ref}. Create a release tag first."
   exit 1
 fi
-
-base_version="$(git show "origin/${base_ref}:${version_path}")"
-head_version="$(cat "${version_path}")"
 
 strip_v() {
   echo "${1#v}"
@@ -28,7 +25,6 @@ parse_version() {
 }
 
 read -r base_major base_minor base_patch < <(parse_version "$base_version")
-read -r head_major head_minor head_patch < <(parse_version "$head_version")
 
 commit_messages="$(git log "origin/${base_ref}"..HEAD --pretty=format:%s%n%b)"
 
@@ -103,14 +99,5 @@ if [[ "$required" == "none" ]]; then
   exit 0
 fi
 
-if ! version_greater "$head_major" "$head_minor" "$head_patch" "$base_major" "$base_minor" "$base_patch"; then
-  echo "Version must increase from ${base_version} to satisfy ${required} bump."
-  exit 1
-fi
-
-if ! version_bump_valid "$required"; then
-  echo "Version ${head_version} does not satisfy required ${required} bump from ${base_version}."
-  exit 1
-fi
-
-echo "Version bump OK: ${base_version} -> ${head_version} (${required})."
+echo "Commit messages require a ${required} bump from ${base_version}."
+echo "Release tag should be created after merge to satisfy this bump."

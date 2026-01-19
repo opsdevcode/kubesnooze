@@ -26,11 +26,11 @@ not in the allowlist tries to push directly.
 
 ## Versioning on PRs
 
-Each PR must update `VERSION` using conventional commit messages:
+This repo uses Conventional Commits to determine the next version:
 
 - `feat:` → minor bump
 - `fix:` or `perf:` → patch bump
 - `BREAKING CHANGE` or `type!:` → major bump
 
-The `Version Check` workflow enforces conventional commits and validates the
-`VERSION` bump against commit messages.
+The `Version Check` workflow enforces Conventional Commits and reports the
+required semver bump based on the latest git tag on `main`.

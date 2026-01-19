@@ -81,5 +81,6 @@ You can also pass `?service=your-service-name` to target a single Service.
 ## Contributing
 
 This repo requires PRs for all changes except the repository owner. CI enforces
-Conventional Commits and requires a semver bump in `VERSION` based on commit
-messages. See `CONTRIBUTING.md` for branch protection and CI setup.
+Conventional Commits and reports the required semver bump based on commit
+messages and the latest git tag. See `CONTRIBUTING.md` for branch protection
+and CI setup.
