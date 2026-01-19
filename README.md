@@ -70,6 +70,14 @@ manifest to point at your built `kubesnooze-splash` image.
 kubectl apply -f config/samples/kubesnooze_splash.yaml
 ```
 
+The splash server supports service-based wake modes:
+
+- `KUBESNOOZE_SERVICE_MODE=selector` (default): use `KUBESNOOZE_LABEL_SELECTOR`
+- `KUBESNOOZE_SERVICE_MODE=service`: use `KUBESNOOZE_SERVICE_NAME`
+- `KUBESNOOZE_SERVICE_MODE=all`: wake workloads for every Service selector
+
+You can also pass `?service=your-service-name` to target a single Service.
+
 ## Contributing
 
 This repo requires PRs for all changes except the repository owner. CI enforces

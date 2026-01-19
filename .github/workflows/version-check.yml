@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   version:
@@ -17,6 +18,8 @@ jobs:
 
       - name: Check Conventional Commits
         uses: wagoid/commitlint-github-action@v5
+        with:
+          configFile: .commitlintrc.cjs
 
       - name: Verify version bump
         run: .github/scripts/check-version.sh

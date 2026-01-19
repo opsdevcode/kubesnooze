@@ -36,6 +36,8 @@ spec:
               value: app-1
             - name: KUBESNOOZE_LABEL_SELECTOR
               value: kubesnooze.io/snooze=app-1
+            - name: KUBESNOOZE_SERVICE_MODE
+              value: selector
             - name: KUBESNOOZE_TITLE
               value: "KubeSnooze"
             - name: KUBESNOOZE_MESSAGE
