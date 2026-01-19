@@ -1,36 +1,47 @@
 # Contributing
 
-## Pull request requirement
+Thanks for contributing to KubeSnooze! This guide focuses on how to make
+changes safely and how CI enforces conventions in this repo.
 
-All changes to `main` should go through a pull request, except for the repo
-owner (and any optional bypass users you explicitly configure).
+## Development workflow
 
-To enforce this in GitHub:
+1. Fork or create a branch from `main`.
+2. Make your changes locally.
+3. Run tests: `go test ./...`
+4. Open a pull request.
 
-1. Create or update a branch protection rule (or ruleset) for `main`:
-   - Require a pull request before merging.
-   - Require CODEOWNERS review.
-   - Require status checks to pass before merging.
-   - Require branches to be up to date before merging (recommended).
-   - Allow bypass for the repository owner (and only those you trust).
-2. Require these checks on `main`:
-   - `CI`
-   - `Direct Push Guard`
-   - `Version Check`
-3. Optional: define a repo variable `ALLOWED_DIRECT_PUSH_USERS` with a
-   comma-separated list of GitHub usernames that may bypass PRs.
+## Pull requests
 
-With the rule in place, non-owner direct pushes to `main` will be blocked by
-branch protection, and the `Direct Push Guard` workflow will fail if anyone
-not in the allowlist tries to push directly.
+All changes to `main` must go through a PR. Direct pushes are blocked for
+non‑owners.
 
-## Versioning on PRs
+Required checks on `main`:
 
-This repo uses Conventional Commits to determine the next version:
+- `CI`
+- `Direct Push Guard`
+- `Version Check`
+
+Optional: define a repo variable `ALLOWED_DIRECT_PUSH_USERS` with a
+comma-separated list of GitHub usernames that may bypass PRs.
+
+## Conventional Commits
+
+This repo uses Conventional Commits. Examples:
+
+- `feat: add cronjob wake override`
+- `fix: handle missing selector`
+- `perf: reduce API calls`
+- `chore: update dependencies`
+
+Add `!` or a `BREAKING CHANGE` footer for major bumps.
+
+## Versioning
+
+Versioning is driven by Conventional Commits and the latest git tag on `main`:
 
 - `feat:` → minor bump
 - `fix:` or `perf:` → patch bump
 - `BREAKING CHANGE` or `type!:` → major bump
 
-The `Version Check` workflow enforces Conventional Commits and reports the
-required semver bump based on the latest git tag on `main`.
+The `Version Check` workflow reports the required semver bump for the PR based
+on its commit messages.
