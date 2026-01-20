@@ -17,9 +17,10 @@ else
 fi
 
 commit_messages="$(git log "${range}" --pretty=format:%s)"
+docs_re='^docs(\([^)]+\))?:'
 docs_commit=false
 while IFS= read -r line; do
-  if [[ "$line" =~ ^docs(\([^)]+\))?: ]]; then
+  if [[ $line =~ $docs_re ]]; then
     docs_commit=true
     break
   fi
