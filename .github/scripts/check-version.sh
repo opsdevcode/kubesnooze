@@ -28,16 +28,20 @@ read -r base_major base_minor base_patch < <(parse_version "$base_version")
 
 commit_messages="$(git log "origin/${base_ref}"..HEAD --pretty=format:%s%n%b)"
 
+breaking_re='^[A-Za-z]+(\([^)]+\))?!:'
+feat_re='^feat(\([^)]+\))?:'
+fix_re='^(fix|perf)(\([^)]+\))?:'
+
 required="none"
 while IFS= read -r line; do
-  if [[ "$line" == *"BREAKING CHANGE"* ]] || [[ "$line" =~ ^[A-Za-z]+(\([^)]+\))?!: ]]; then
+  if [[ "$line" == *"BREAKING CHANGE"* ]] || [[ $line =~ $breaking_re ]]; then
     required="major"
     break
   fi
-  if [[ "$required" != "major" && "$line" =~ ^feat(\([^)]+\))?: ]]; then
+  if [[ "$required" != "major" && $line =~ $feat_re ]]; then
     required="minor"
   fi
-  if [[ "$required" == "none" && "$line" =~ ^(fix|perf)(\([^)]+\))?: ]]; then
+  if [[ "$required" == "none" && $line =~ $fix_re ]]; then
     required="patch"
   fi
 done <<< "$commit_messages"
