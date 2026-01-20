@@ -84,6 +84,59 @@ To require login for the splash page, set `KUBESNOOZE_AUTH_USERNAME` and
 `KUBESNOOZE_AUTH_PASSWORD`. When both are set, the splash page uses HTTP Basic
 Auth.
 
+### SSO (OIDC) with oauth2-proxy
+
+You can put the splash page behind SSO using `oauth2-proxy` and any ingress
+controller. The default sample is ALB; see the notes below for other ingress
+options.
+
+```sh
+kubectl apply -f config/samples/kubesnooze_splash_oidc.yaml
+```
+
+Ingress notes:
+
+- **ALB (default)**: uses `kubernetes.io/ingress.class: alb` and ALB annotations.
+- **NGINX**: set `kubernetes.io/ingress.class: nginx` and configure your auth
+  endpoints if you want NGINX auth features instead of oauth2-proxy.
+- **Traefik**: set `kubernetes.io/ingress.class: traefik`.
+- **Kong**: set `kubernetes.io/ingress.class: kong`.
+
+When using oauth2-proxy, the Ingress should point to the proxy Service, and
+the proxy should upstream to the splash Service.
+
+### Helm configuration
+
+Use the Helm chart under `charts/kubesnooze-splash` to configure auth:
+
+```sh
+helm upgrade --install kubesnooze-splash charts/kubesnooze-splash \
+  --set ingress.host=splash.example.com \
+  --set splash.labelSelector="kubesnooze.io/snooze=app-1"
+```
+
+Basic auth:
+
+```sh
+helm upgrade --install kubesnooze-splash charts/kubesnooze-splash \
+  --set auth.mode=basic \
+  --set auth.basic.username=admin \
+  --set auth.basic.password=changeme
+```
+
+OIDC with oauth2-proxy:
+
+```sh
+helm upgrade --install kubesnooze-splash charts/kubesnooze-splash \
+  --set auth.mode=oidc \
+  --set auth.oidc.issuerUrl=https://issuer.example.com \
+  --set auth.oidc.redirectUrl=https://splash.example.com/oauth2/callback \
+  --set auth.oidc.clientId=<client-id> \
+  --set auth.oidc.clientSecret=<client-secret> \
+  --set auth.oidc.cookieSecret=<base64-32-byte> \
+  --set ingress.host=splash.example.com
+```
+
 ## Contributing
 
 This repo requires PRs for all changes except the repository owner. CI enforces

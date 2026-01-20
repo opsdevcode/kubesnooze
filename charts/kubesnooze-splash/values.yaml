@@ -1,0 +1,63 @@
+image:
+  repository: ghcr.io/kubesnooze/kubesnooze-splash
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  targetPort: 8080
+
+splash:
+  title: KubeSnooze
+  message: Waking up this environment...
+  serviceMode: selector
+  labelSelector: kubesnooze.io/snooze=app-1
+  serviceName: ""
+  serviceAccountName: ""
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+auth:
+  mode: none # none | basic | oidc
+  basic:
+    username: ""
+    password: ""
+    existingSecret: ""
+  oidc:
+    issuerUrl: ""
+    redirectUrl: ""
+    emailDomains:
+      - "*"
+    clientId: ""
+    clientSecret: ""
+    cookieSecret: ""
+    existingSecret: ""
+    upstream: ""
+
+oauth2Proxy:
+  image: quay.io/oauth2-proxy/oauth2-proxy
+  tag: v7.6.0
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  extraArgs: []
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  host: splash.example.com
+  path: /
+  pathType: Prefix
