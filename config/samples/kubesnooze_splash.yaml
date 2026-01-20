@@ -38,6 +38,11 @@ spec:
               value: kubesnooze.io/snooze=app-1
             - name: KUBESNOOZE_SERVICE_MODE
               value: selector
+            # Optional basic auth for the splash page.
+            # - name: KUBESNOOZE_AUTH_USERNAME
+            #   value: admin
+            # - name: KUBESNOOZE_AUTH_PASSWORD
+            #   value: changeme
             - name: KUBESNOOZE_TITLE
               value: "KubeSnooze"
             - name: KUBESNOOZE_MESSAGE

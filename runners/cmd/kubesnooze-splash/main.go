@@ -28,6 +28,8 @@ const (
 	envLabelSelector           = "KUBESNOOZE_LABEL_SELECTOR"
 	envServiceMode             = "KUBESNOOZE_SERVICE_MODE"
 	envServiceName             = "KUBESNOOZE_SERVICE_NAME"
+	envAuthUsername            = "KUBESNOOZE_AUTH_USERNAME"
+	envAuthPassword            = "KUBESNOOZE_AUTH_PASSWORD"
 	envWakeReplicas            = "KUBESNOOZE_WAKE_REPLICAS"
 	envWakeHPAMin              = "KUBESNOOZE_WAKE_HPA_MIN_REPLICAS"
 	envPort                    = "KUBESNOOZE_PORT"
@@ -41,6 +43,8 @@ type splashConfig struct {
 	selectorRaw  string
 	serviceMode  string
 	serviceName  string
+	authUsername string
+	authPassword string
 	wakeReplicas *int32
 	wakeHPAMin   *int32
 	port         string
@@ -100,8 +104,25 @@ func (s *wakeService) routes() http.Handler {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.HandleFunc("/", s.handleSplash)
+	mux.HandleFunc("/", s.requireAuth(s.handleSplash))
 	return mux
+}
+
+func (s *wakeService) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.config.authUsername == "" && s.config.authPassword == "" {
+			next(w, r)
+			return
+		}
+
+		username, password, ok := r.BasicAuth()
+		if !ok || username != s.config.authUsername || password != s.config.authPassword {
+			w.Header().Set("WWW-Authenticate", `Basic realm="kubesnooze"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (s *wakeService) handleSplash(w http.ResponseWriter, r *http.Request) {
@@ -195,6 +216,11 @@ func loadConfig() (*splashConfig, error) {
 
 	wakeReplicas := parseInt32Pointer(os.Getenv(envWakeReplicas))
 	wakeHPAMin := parseInt32Pointer(os.Getenv(envWakeHPAMin))
+	authUsername := strings.TrimSpace(os.Getenv(envAuthUsername))
+	authPassword := strings.TrimSpace(os.Getenv(envAuthPassword))
+	if (authUsername == "") != (authPassword == "") {
+		return nil, fmt.Errorf("%s and %s must both be set to enable login", envAuthUsername, envAuthPassword)
+	}
 
 	port := os.Getenv(envPort)
 	if port == "" {
@@ -215,6 +241,8 @@ func loadConfig() (*splashConfig, error) {
 		selectorRaw:  selectorRaw,
 		serviceMode:  serviceMode,
 		serviceName:  serviceName,
+		authUsername: authUsername,
+		authPassword: authPassword,
 		wakeReplicas: wakeReplicas,
 		wakeHPAMin:   wakeHPAMin,
 		port:         port,

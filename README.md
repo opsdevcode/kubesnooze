@@ -80,6 +80,10 @@ The splash server supports service-based wake modes:
 
 You can also pass `?service=your-service-name` to target a single Service.
 
+To require login for the splash page, set `KUBESNOOZE_AUTH_USERNAME` and
+`KUBESNOOZE_AUTH_PASSWORD`. When both are set, the splash page uses HTTP Basic
+Auth.
+
 ## Contributing
 
 This repo requires PRs for all changes except the repository owner. CI enforces
