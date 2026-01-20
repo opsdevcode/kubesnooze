@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubesnooze-splash.fullname" . }}
+  labels:
+    {{- include "kubesnooze-splash.labels" . | nindent 4 }}
+    app.kubernetes.io/component: splash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kubesnooze-splash.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: splash
+  template:
+    metadata:
+      labels:
+        {{- include "kubesnooze-splash.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: splash
+    spec:
+      {{- if .Values.splash.serviceAccountName }}
+      serviceAccountName: {{ .Values.splash.serviceAccountName }}
+      {{- end }}
+      containers:
+        - name: splash
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+          env:
+            - name: KUBESNOOZE_NAMESPACE
+              value: {{ .Release.Namespace }}
+            - name: KUBESNOOZE_TITLE
+              value: {{ .Values.splash.title | quote }}
+            - name: KUBESNOOZE_MESSAGE
+              value: {{ .Values.splash.message | quote }}
+            - name: KUBESNOOZE_SERVICE_MODE
+              value: {{ .Values.splash.serviceMode | quote }}
+            {{- if .Values.splash.labelSelector }}
+            - name: KUBESNOOZE_LABEL_SELECTOR
+              value: {{ .Values.splash.labelSelector | quote }}
+            {{- end }}
+            {{- if .Values.splash.serviceName }}
+            - name: KUBESNOOZE_SERVICE_NAME
+              value: {{ .Values.splash.serviceName | quote }}
+            {{- end }}
+            {{- if eq .Values.auth.mode "basic" }}
+            - name: KUBESNOOZE_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-basic-auth" (include "kubesnooze-splash.fullname" .)) .Values.auth.basic.existingSecret }}
+                  key: username
+            - name: KUBESNOOZE_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-basic-auth" (include "kubesnooze-splash.fullname" .)) .Values.auth.basic.existingSecret }}
+                  key: password
+            {{- end }}
+          resources:
+            {{- toYaml .Values.splash.resources | nindent 12 }}

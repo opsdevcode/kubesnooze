@@ -1,0 +1,58 @@
+{{- if eq .Values.auth.mode "oidc" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubesnooze-splash.fullname" . }}-oauth2-proxy
+  labels:
+    {{- include "kubesnooze-splash.labels" . | nindent 4 }}
+    app.kubernetes.io/component: oauth2-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kubesnooze-splash.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        {{- include "kubesnooze-splash.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: oauth2-proxy
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: "{{ .Values.oauth2Proxy.image }}:{{ .Values.oauth2Proxy.tag }}"
+          args:
+            - --provider=oidc
+            - --oidc-issuer-url={{ .Values.auth.oidc.issuerUrl }}
+            - --redirect-url={{ .Values.auth.oidc.redirectUrl }}
+            {{- range .Values.auth.oidc.emailDomains }}
+            - --email-domain={{ . }}
+            {{- end }}
+            - --upstream={{ default (printf "http://%s.%s.svc.cluster.local:%d/" (include "kubesnooze-splash.fullname" .) .Release.Namespace (.Values.service.port | int)) .Values.auth.oidc.upstream }}
+            - --http-address=0.0.0.0:4180
+            - --cookie-secure=true
+            {{- range .Values.oauth2Proxy.extraArgs }}
+            - {{ . }}
+            {{- end }}
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-oidc" (include "kubesnooze-splash.fullname" .)) .Values.auth.oidc.existingSecret }}
+                  key: client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-oidc" (include "kubesnooze-splash.fullname" .)) .Values.auth.oidc.existingSecret }}
+                  key: client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default (printf "%s-oidc" (include "kubesnooze-splash.fullname" .)) .Values.auth.oidc.existingSecret }}
+                  key: cookie-secret
+          ports:
+            - name: http
+              containerPort: 4180
+          resources:
+            {{- toYaml .Values.oauth2Proxy.resources | nindent 12 }}
+{{- end }}
