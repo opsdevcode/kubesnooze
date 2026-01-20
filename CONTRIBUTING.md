@@ -37,11 +37,11 @@ Add `!` or a `BREAKING CHANGE` footer for major bumps.
 
 ## Versioning
 
-Versioning is driven by Conventional Commits and the latest git tag on `main`:
+Versioning is driven by Conventional Commits and automated releases on `main`:
 
 - `feat:` → minor bump
 - `fix:` or `perf:` → patch bump
 - `BREAKING CHANGE` or `type!:` → major bump
 
-The `Version Check` workflow reports the required semver bump for the PR based
-on its commit messages.
+The Release workflow uses Conventional Commits to tag and publish releases on
+every merge to `main`.

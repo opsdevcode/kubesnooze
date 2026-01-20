@@ -87,6 +87,5 @@ Auth.
 ## Contributing
 
 This repo requires PRs for all changes except the repository owner. CI enforces
-Conventional Commits and reports the required semver bump based on commit
-messages and the latest git tag. See `CONTRIBUTING.md` for branch protection
-and CI setup.
+Conventional Commits, and releases are tagged automatically on `main` using
+those commits. See `CONTRIBUTING.md` for branch protection and CI setup.
